@@ -1,0 +1,1 @@
+{"nvertex": 478, "avg_degree": 10.107101808146437, "feature_center_distance": 2.276265033465576, "feature_dim": 16, "edge_center_distance": 2.0, "edge_feature_dim": 2, "p_to_q_ratio": 54.10215301271245, "num_clusters": 4, "cluster_size_slope": 0.0, "power_exponent": 1.0, "generator_name": "StochasticBlockModel"}
