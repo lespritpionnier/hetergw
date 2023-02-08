@@ -55,14 +55,19 @@ class WriteNodeClassificationDatasetDoFn(beam.DoFn):
       f.write(buf)
       f.close()
 
-    graph_object_name = os.path.join(self._output_path, prefix + '_graph.gt')
+#    graph_object_name = os.path.join(self._output_path, prefix + '_graph.gt')
+ #   with beam.io.filesystems.FileSystems.create(graph_object_name) as f:
+  #    data.graph.save(f)
+   #   f.close()
+
+    graph_object_name = os.path.join(self._output_path, prefix + '_graph.gml')
     with beam.io.filesystems.FileSystems.create(graph_object_name) as f:
-      data.graph.save(f)
+      data.graph.save(f, fmt='gml')
       f.close()
 
-    graph_test_name = os.path.join(self._output_path, prefix + '_graph.txt')
-    with beam.io.filesystems.FileSystems.create(graph_test_name, text_mime) as f:
-      np.savetxt(f, data.graph.str())
+    graph_object_name = os.path.join(self._output_path, prefix + '_graph.xml')
+    with beam.io.filesystems.FileSystems.create(graph_object_name) as f:
+      data.graph.save(f, fmt='graphml')
       f.close()
 
     graph_memberships_object_name = os.path.join(
