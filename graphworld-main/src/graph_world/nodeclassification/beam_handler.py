@@ -18,6 +18,10 @@ import os
 import apache_beam as beam
 import gin
 import numpy as np
+import graph_tool.all as gt
+from math import sqrt
+
+import torch
 
 from ..beam.benchmarker import BenchmarkGNNParDo
 from ..beam.generator_beam_handler import GeneratorBeamHandler
@@ -45,6 +49,7 @@ class WriteNodeClassificationDatasetDoFn(beam.DoFn):
     sample_id = element['sample_id']
     config = element['generator_config']
     data = element['data']
+    gtdata = data.graph
 
     text_mime = 'text/plain'
     prefix = '{0:05}'.format(sample_id)
@@ -55,10 +60,54 @@ class WriteNodeClassificationDatasetDoFn(beam.DoFn):
       f.write(buf)
       f.close()
 
+
+
+
+    pdf_object_name = os.path.join(self._output_path,  prefix + '_draw.pdf')
+    gt.graph_draw(gtdata, pos=None, vprops=None, eprops=None, vorder=None, eorder=None, nodesfirst=False,
+                               output_size=(600, 600), fit_view=True, fit_view_ink=None, adjust_aspect=True,
+                               ink_scale=1, inline=False, inline_scale=2, mplfig=None, output=pdf_object_name, fmt='pdf',
+                               bg_color=None)
+
+
+
+
+    pdf_object_name1 = os.path.join(self._output_path, prefix + '_gt-draw.pdf')
+    deg = gtdata.degree_property_map("in")
+    #deg.a = 4 * (sqrt(deg.a) * 0.5 + 0.4)
+    ebet = gt.betweenness(gtdata)[1]
+    ebet.a /= ebet.a.max() / 10.
+    eorder = ebet.copy()
+    eorder.a *= -1
+    pos = gt.sfdp_layout(gtdata)
+    control = gtdata.new_edge_property("vector<double>")
+    gt.graph_draw(gtdata, pos=pos, vertex_size=deg, vertex_fill_color=deg, vorder=deg,
+                  edge_color=ebet, eorder=eorder, edge_pen_width=ebet,
+                  edge_control_points=control,  # some curvy edges
+                  output=pdf_object_name1, fmt='pdf')
+
+    pdf_object_name2 = os.path.join(self._output_path, prefix + '_graphviz-draw.pdf')
+    deg = gtdata.degree_property_map("in")
+    #deg.a = 4 * (sqrt(deg.a) * 0.5 + 0.4)
+    ebet = gt.betweenness(gtdata)[1]
+    gt.graphviz_draw(gtdata, vcolor=deg, vorder=deg, elen=10,
+                     ecolor=ebet, eorder=ebet, output=pdf_object_name2)
 #    graph_object_name = os.path.join(self._output_path, prefix + '_graph.gt')
  #   with beam.io.filesystems.FileSystems.create(graph_object_name) as f:
   #    data.graph.save(f)
    #   f.close()
+
+
+
+
+
+
+
+
+
+
+
+
 
     graph_object_name = os.path.join(self._output_path, prefix + '_graph.gml')
     with beam.io.filesystems.FileSystems.create(graph_object_name) as f:
@@ -104,12 +153,27 @@ class WriteNodeClassificationDatasetDoFn(beam.DoFn):
 
 class ComputeNodeClassificationMetrics(beam.DoFn):
 
+  def __init__(self, output_path):
+    self._output_path = output_path
+
   def process(self, element):
     out = element
     out['metrics'] = graph_metrics(element['data'].graph)
     out['metrics'].update(NodeLabelMetrics(element['data'].graph,
                                            element['data'].graph_memberships,
                                            element['data'].node_features))
+
+    gt_matrix = out['metrics']
+    sample_id = element['sample_id']
+    prefix = '{0:05}'.format(sample_id)
+    stats_object_name = os.path.join(
+       self._output_path, prefix + '_matrix.txt')
+    with beam.io.filesystems.FileSystems.create(stats_object_name,
+                                                 'text/plain') as f:
+      buf = bytes(json.dumps(gt_matrix), 'utf-8')
+      f.write(buf)
+      f.close()
+
     yield out
 
 
@@ -125,7 +189,7 @@ class ConvertToTorchGeoDataParDo(beam.DoFn):
 
     out = {
       'sample_id': sample_id,
-      'metrics' : element['metrics'],
+      'metrics': element['metrics'],
       'torch_data': None,
       'masks': None,
       'skipped': False,
@@ -137,6 +201,33 @@ class ConvertToTorchGeoDataParDo(beam.DoFn):
     try:
       torch_data = nodeclassification_data_to_torchgeo_data(
           nodeclassification_data)
+
+      data_object_name = os.path.join(self._output_path, '{0:05}_torch_data.pt'.format(sample_id))
+      torch.save(torch_data, data_object_name)
+
+      gtdata = nodeclassification_data
+
+      pdf_object_name = os.path.join(self._output_path, '{0:05}_gt-draw.pdf'.format(sample_id))
+      deg = gtdata.degree_property_map("in")
+      deg.a = 4 * (sqrt(deg.a) * 0.5 + 0.4)
+      ebet = gt.betweenness(gtdata)[1]
+      ebet.a /= ebet.a.max() / 10.
+      eorder = ebet.copy()
+      eorder.a *= -1
+      pos = gt.sfdp_layout(gtdata)
+      control = gtdata.new_edge_property("vector<double>")
+      gt.graph_draw(gtdata, pos=pos, vertex_size=deg, vertex_fill_color=deg, vorder=deg,
+                    edge_color=ebet, eorder=eorder, edge_pen_width=ebet,
+                    edge_control_points=control,  # some curvy edges
+                    output=pdf_object_name)
+
+      pdf_object_name2 = os.path.join(self._output_path, '{0:05}_graphviz-draw.pdf'.format(sample_id))
+      deg = gtdata.degree_property_map("in")
+      deg.a = 4 * (sqrt(deg.a) * 0.5 + 0.4)
+      ebet = gt.betweenness(gtdata)[1]
+      gt.graphviz_draw(gtdata, vcolor=deg, vorder=deg, elen=10,
+                       ecolor=ebet, eorder=ebet, output=pdf_object_name2)
+
       out['torch_data'] = torch_data
       out['gt_data'] = nodeclassification_data.graph
 
@@ -155,6 +246,10 @@ class ConvertToTorchGeoDataParDo(beam.DoFn):
         buf = bytes(json.dumps(torchgeo_stats), 'utf-8')
         f.write(buf)
         f.close()
+
+
+
+
     except:
       out['skipped'] = True
       print(f'failed to convert {sample_id}')
@@ -163,6 +258,17 @@ class ConvertToTorchGeoDataParDo(beam.DoFn):
             'for sample id %d'), sample_id)
       yield out
       return
+
+    gt_matrix = element['metrics']
+    stats_object_name = os.path.join(
+       self._output_path, '{0:05}_matrix.txt'.format(sample_id))
+    with beam.io.filesystems.FileSystems.create(stats_object_name,
+                                                 'text/plain') as f:
+      buf = bytes(json.dumps(gt_matrix), 'utf-8')
+      f.write(buf)
+      f.close()
+
+
 
     try:
       out['masks'] = get_kclass_masks(
@@ -182,7 +288,16 @@ class ConvertToTorchGeoDataParDo(beam.DoFn):
       yield out
       return
 
+
+
+
+
+
     yield out
+
+
+def ComputeNodeClassificationMetricsDoFn(output_path):
+  pass
 
 
 @gin.configurable
@@ -197,7 +312,7 @@ class NodeClassificationBeamHandler(GeneratorBeamHandler):
     self._benchmark_par_do = BenchmarkGNNParDo(
         benchmarker_wrappers, num_tuning_rounds, tuning_metric,
         tuning_metric_is_loss, save_tuning_results)
-    self._metrics_par_do = ComputeNodeClassificationMetrics()
+
     self._ktrain = ktrain
     self._ktuning = ktuning
     self._save_tuning_results = save_tuning_results
@@ -220,6 +335,7 @@ class NodeClassificationBeamHandler(GeneratorBeamHandler):
   def SetOutputPath(self, output_path):
     self._output_path = output_path
     self._write_do_fn = WriteNodeClassificationDatasetDoFn(output_path)
+    self._metrics_par_do = ComputeNodeClassificationMetrics(output_path)
     self._convert_par_do = ConvertToTorchGeoDataParDo(output_path, self._ktrain,
                                                       self._ktuning)
     self._benchmark_par_do.SetOutputPath(output_path)

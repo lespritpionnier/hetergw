@@ -23,6 +23,11 @@ import gin
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import SetupOptions
 
+import networkx as nx
+from torch_geometric.utils import to_networkx
+import matplotlib.pyplot as plt
+import graph_tool.all as gt
+
 # Generator-agnostic imports
 from ..beam.generator_beam_handler import GeneratorBeamHandlerWrapper
 from ..beam.generator_config_sampler import ParamSamplerSpec
@@ -78,6 +83,19 @@ def entry(argv=None):
         | 'Convert to torchgeo data.' >> beam.ParDo(
         gen_handler_wrapper.handler.GetConvertParDo())
     )
+
+    data_object_name = os.path.join(args.output, 'torch_data_pipeline.pt')
+    torch.save(torch_data, data_object_name)
+
+
+#    data_png_name = os.path.join(args.output, 'draw_data.png')
+ #   drawdata = to_networkx(torch_data)
+  #  plt.figure(figsize=(100, 100))
+   # pos = nx.spring_layout(drawdata, seed=10)
+    #nx.draw(drawdata, pos, with_labels=True)
+    #plt.savefig(data_png_name)
+
+
 
     (torch_data | 'Filter skipped conversions' >> beam.Filter(
         lambda el: el['skipped'])

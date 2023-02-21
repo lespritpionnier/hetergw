@@ -35,6 +35,7 @@ class SbmGeneratorWrapper(GeneratorConfigSampler):
     self._AddSamplerFn('edge_feature_dim', self._SampleUniformInteger)
     self._AddSamplerFn('edge_center_distance', self._SampleUniformFloat)
     self._AddSamplerFn('p_to_q_ratio', self._SampleUniformFloat)
+    self._AddSamplerFn('edge_homogeneity', self._SampleUniformFloat)
     self._AddSamplerFn('num_clusters', self._SampleUniformInteger)
     self._AddSamplerFn('cluster_size_slope', self._SampleUniformFloat)
     self._AddSamplerFn('power_exponent', self._SampleUniformFloat)

@@ -16,15 +16,6 @@ import numpy as np
 import graph_tool
 
 
-def edge_homogeneity(graph, labels):
-  count_in = 0
-  count_total = 0
-  for edge in graph.edges():
-    count_total += 1
-    count_in += (
-        labels[int(edge.source())] == labels[int(edge.target())])
-  return count_in / count_total
-
 
 def sum_angular_distance_matrix_nan(X, Y, batch_size=100):
   nx = X.shape[0]
@@ -55,6 +46,14 @@ def sum_angular_distance_matrix_nan(X, Y, batch_size=100):
     pos1 += batch_size
   return total_sum
 
+def edge_homogeneity(graph, labels):
+  count_in = 0
+  count_total = 0
+  for edge in graph.edges():
+    count_total += 1
+    count_in += (
+        labels[int(edge.source())] == labels[int(edge.target())])
+  return count_in / count_total
 
 def feature_homogeneity(normed_features, labels):
   all_labels = sorted(list(set(labels)))
@@ -123,10 +122,13 @@ def _get_p_to_q_ratio(G, labels, degrees, adjusted=False):
   edge_count_matrix = _get_edge_count_matrix(adj, labels)
   pi = _get_pi(labels, degrees, adjusted)
   n = adj.shape[0]
+
   num_within_pairs = np.sum(pi ** 2.0) * (n ** 2.0)
-  num_between_pairs = (n ** 2.0) - num_within_pairs
   num_within_edges = np.sum(np.diag(edge_count_matrix))
+
+  num_between_pairs = (n ** 2.0) - num_within_pairs
   num_between_edges = np.sum(edge_count_matrix) - num_within_edges
+
   return ((num_within_edges / num_within_pairs) /
           (num_between_edges / num_between_pairs))
 

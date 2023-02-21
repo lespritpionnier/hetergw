@@ -6,6 +6,7 @@ SBMSamplerSpec = [
   @edge_center_distance/ParamSamplerSpec(),
   @edge_feature_dim/ParamSamplerSpec(),
   @p_to_q_ratio/ParamSamplerSpec(),
+  @edge_homogeneity/ParamSamplerSpec(),
   @num_clusters/ParamSamplerSpec(),
   @cluster_size_slope/ParamSamplerSpec(),
   @power_exponent/ParamSamplerSpec()
@@ -18,6 +19,11 @@ nvertex/ParamSamplerSpec.max_val = 512
 p_to_q_ratio/ParamSamplerSpec.name = "p_to_q_ratio"
 p_to_q_ratio/ParamSamplerSpec.min_val = 1.0
 p_to_q_ratio/ParamSamplerSpec.max_val = 16.0
+
+
+edge_homogeneity/ParamSamplerSpec.name = "edge_homogeneity"
+edge_homogeneity/ParamSamplerSpec.min_val = 0.0
+edge_homogeneity/ParamSamplerSpec.max_val = 1.0
 
 avg_degree/ParamSamplerSpec.name = "avg_degree"
 avg_degree/ParamSamplerSpec.min_val = 1.0

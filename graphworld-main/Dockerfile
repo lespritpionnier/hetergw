@@ -38,7 +38,8 @@ RUN apt-get -y update \
         python3-venv \
         python3-decorator \
         python3-cairo \
-        python3-graph-tool
+        python3-graph-tool \
+        graphviz
 
 
 
